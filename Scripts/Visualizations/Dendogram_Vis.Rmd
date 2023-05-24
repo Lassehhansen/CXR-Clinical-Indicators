@@ -1,0 +1,160 @@
+---
+title: "Topic Hierarchy Dendogram"
+subtitle: "CXR Language Diagnostics"
+author: "Lasse Hyldig Hansen"
+date: "2023-04-19"
+output: 
+  html_document:
+    toc: true
+---
+
+```{r}
+library(tidyverse)
+library(scales)
+library(ggraph)
+library(igraph)
+```
+
+## Data
+
+```{r}
+df_hier = read_csv("../hierarchical_structure_topic_model.csv")
+df_for_model = read_csv("../topic_model_dataset.csv")
+df_lung_attr_map = read_csv("../lung_attribute_mapping.csv")
+```
+
+### Wrangling
+```{r}
+df_hier$topic = df_hier$level3
+df_for_model3 = left_join(df_for_model, df_hier, by = "topic")
+df_for_model3$level2_names = as.factor(df_for_model3$level2_names)
+```
+
+### Getting topic sizes:
+
+```{r}
+name3_count = df_for_model3 %>% 
+              group_by(level3_names) %>% 
+              summarize(count = n())
+
+colnames(name3_count) <- c("name", "count")
+
+name2_count = df_for_model3 %>% 
+              group_by(level2_names) %>% 
+              summarize(count = n())
+
+colnames(name2_count) <- c("name", "count")
+
+
+name1_count = df_for_model3 %>% 
+              group_by(level1_names) %>% 
+              summarize(count = n())
+
+colnames(name1_count) <- c("name", "count")
+```
+
+#### Binding them 
+
+```{r}
+names_size = rbind(name2_count, name3_count)
+```
+
+## Data for IGraph
+
+```{r}
+df_hier$level0_names = ""
+
+ 
+# transform it to a edge list!
+
+edges_level1_2 <- df_hier %>% select(level0_names, level2_names) %>% unique %>% rename(from=level0_names, to=level2_names)
+edges_level2_3 <- df_hier %>% select(level2_names, level3_names) %>% unique %>% rename(from=level2_names, to=level3_names)
+edges=rbind(edges_level1_2, edges_level2_3)
+
+vertices = data.frame(
+  name = unique(c(as.character(edges$from), as.character(edges$to))) , 
+  value = runif(25)
+) 
+
+vertices$group = edges$from[ match( vertices$name, edges$to ) ]
+
+
+#Let's add information concerning the label we are going to add: angle, horizontal adjustement and potential flip
+#calculate the ANGLE of the labels
+vertices$id=NA
+myleaves=which(is.na( match(vertices$name, edges$from) ))
+nleaves=length(myleaves)
+vertices$id[ myleaves ] = seq(1:nleaves)
+vertices$angle= 160 - 360 * vertices$id / nleaves
+ 
+# calculate the alignment of labels: right or left
+# If I am on the left part of the plot, my labels have currently an angle < -90
+vertices$hjust<-ifelse( vertices$angle < -90, 1, 0)
+ 
+# flip angle BY to make them readable
+vertices$angle<-ifelse(vertices$angle < -90, vertices$angle+180, vertices$angle)
+ 
+vertices$angle = ifelse(is.na(vertices$angle), 0, vertices$angle)
+
+vertices$vjust = ifelse(vertices$name %in% c("Respiratory Infections",
+                                             "Respiratory Health",
+                                             "Critical Care",
+                                             "Cardiac Symptoms",
+                                             "Neurological Symptoms",
+                                             "Cardiac Conditions",
+                                             "Thoracic Procedures",
+                                             "Gastrointestinal Disorders"
+                                             ), 5, 0)
+
+vertices$vjust = ifelse(vertices$name %in% c("Infection Management",
+                                             "Neurocognitive Changes",
+                                             "Procedural Care",
+                                             "Enteral Tube Insertion",
+                                             "Supportive Therapies",
+                                             "Thoracic Surgeries"
+                                             ), -5, vertices$vjust)
+
+vertices2 = left_join(vertices, names_size, by = "name")
+
+# Create a graph object
+mygraph <- graph_from_data_frame( edges, vertices=vertices2 )
+```
+
+## Visualizing it 
+
+```{r}
+# Now we can plot that
+
+
+p0<- ggraph(mygraph, layout = 'dendrogram', circular = TRUE) + 
+  geom_edge_diagonal(colour="grey") +
+  scale_edge_colour_distiller(palette = "RdPu") +
+  #scale_edge_colour_manual(values = c("#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f", "#e5c494", "#b3b3cc", "#8dd3c7", "#bebada", "#fb8072", #"#80b1d3", "#fdb462", "#fccde5", "#d9d9d9", "#bc80bd")) +
+  geom_node_point(aes(x = x*1, 
+                      y=y*1, 
+                      colour=group, 
+                      size=count, 
+                      alpha=1)) +
+  geom_node_text(aes(x = x*1.15, y=y*1.15, 
+                     label=name, 
+                     #angle = angle, 
+                     fontface = "bold",
+                     #hjust=hjust, 
+                     #vjust=vjust,
+                     colour=group), 
+                     size=2.7, 
+                     alpha=1) +
+  #scale_colour_manual(values= rep( brewer.pal(9,"Paired") , 30)) +
+  scale_colour_manual(values = c("#66c2a5", "#8da0cb", "#a6d854", "#b3b3cc", "#bc80bd", "#bebada", "#e5c494", "#e78ac3", "#fb8072", "#fccde5", "#fc8d62", "#ffd92f", "#80b1d3", "#fdb462", "#8dd3c7", "#ffeda0"
+  )) +
+  scale_size_continuous( range = c(2,15) ) +
+  theme_void() +
+  theme(
+    legend.position="none"
+    #plot.margin=unit(c(2,2,2,2),"cm"),
+  ) + expand_limits(x = c(-1.5, 1.5), y = c(-1.5, 1.5))
+```
+
+
+
+

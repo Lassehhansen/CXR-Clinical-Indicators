@@ -1,0 +1,194 @@
+---
+title: "Topic_Distributions"
+subtitle: "CXR Language Diagnostics"
+author: "Lasse Hyldig Hansen"
+date: "2023-04-19"
+output: 
+  html_document:
+    toc: true
+---
+
+
+### Packages
+
+```{r}
+library(tidyverse)
+library(lme4)
+```
+
+### Loading Data 
+
+```{r}
+df_for_model = read_csv("../topic_model_dataset.csv")
+df_hier = read_csv("../hierarchical_structure_topic_model.csv")
+df_lung_attr_map = read_csv("../lung_attribute_mapping.csv")
+```
+
+#### Making sure there is a column to join on 
+
+```{r}
+df_hier$topic = df_hier$level3
+```
+
+#### Joinging topic hierarchy names and dataframe with diseases
+
+```{r}
+df_for_model3 = left_join(df_for_model, df_hier, by = "topic")
+```
+
+
+#### Changing data classes and coding disease category
+```{r}
+df_for_model3$level2_names = as.factor(df_for_model3$level2_names)
+
+df_for_model3$disease_category2 = ifelse(df_for_model3$disease_category == "fluid overload/heart failure", 0, 
+                                  ifelse(df_for_model3$disease_category == "copd/emphysema", 1, NA
+                                       ))
+```
+
+### Making attributes in categories dataframe
+
+```{r}
+# Selecting columns needed and removing NAs
+disease_plot = df_for_model3 %>% dplyr::select(disease_category, level3_names) %>% drop_na()
+
+# Calculate the topic distribution by disease category
+disease_top_dist <- table(disease_plot$disease_category, disease_plot$level3_names)
+
+# Convert the table to a dataframe
+disease_top_df <- as.data.frame(disease_top_dist)
+
+# Rename the columns for better visualization
+colnames(disease_top_df) <- c("Disease Category", "Topic", "Count")
+
+# Calculate proportions by disease category
+disease_top_df <- disease_top_df %>%
+  group_by(`Disease Category`) %>%
+  mutate(Proportion = Count / sum(Count))
+
+# Plot the distribution
+p_disease_top_dist <- ggplot(disease_top_df, 
+                             aes(x = reorder(Topic, Proportion), 
+                                 y = Proportion, 
+                                 fill = `Disease Category`)) +
+                            geom_bar(stat = "identity", position = "stack") +
+                            scale_fill_manual(values = c("#e76f51", "#1d3557")) +
+                            labs(title = "", x = "", y = "Proportion") +
+                            theme_classic() +
+                            theme(legend.position = "none",
+                                  strip.text = element_text(face = "bold"),
+                                  legend.text = element_text(face = "bold"),
+                                      strip.background = element_blank() ) +
+                            facet_grid(~`Disease Category`) +
+                            coord_flip()
+```
+
+
+```{r}
+df_lung_attr_map3 = df_lung_attr_map2 %>% drop_na()
+```
+
+```{r}
+vis_att_df = df_lung_attr_map3 %>% dplyr::select(bbox_name, level2_names, attribute_category, level1_names, level3_names, disease_category) %>% drop_na()
+
+# Calculate the topic distribution by attribute category
+topic_distribution_attribute <- table(vis_att_df$attribute_category, vis_att_df$level3_names)
+
+# Convert the table to a dataframe
+topic_df_att <- as.data.frame(topic_distribution_attribute)
+
+# Rename the columns for better visualization
+colnames(topic_df_att) <- c("Attribute Category", "Topic", "Count")
+
+# Calculate proportions by attribute category
+topic_df_att <- topic_df_att %>%
+  group_by(Topic) %>%
+  mutate(Proportion = Count / sum(Count))
+
+# Plot the distribution using ggplot2
+p1 <- ggplot(topic_df_att, aes(x = reorder(`Attribute Category`, 
+                                           Proportion), y = Proportion, fill = Topic)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Proportional Distribution of Topics in Attribute Categories", x = "Attribute Category", y = "Proportion") +
+  facet_grid(~Topic) +
+  theme_classic() +
+  #scale_fill_manual(values = c("#FF0000", "#00FF00", "#0000FF", "#FFC0CB", "#00FFFF", "#FFFF00", "#800080", "#008000", "#FFA500", "#FF00FF")) +
+  theme(
+    legend.position = "none",
+    strip.background = element_blank() 
+
+  ) + coord_flip()
+
+```
+
+
+```{r}
+write.csv(df_lung_attr_map3, "attribute_mapped_df.csv")
+```
+
+
+```{r}
+vis_att_df = df_lung_attr_map3 %>% dplyr::select(bbox_name, level2_names, attribute_category, level1_names, level3_names, disease_category) %>% drop_na()
+
+# Calculate the topic distribution by attribute category
+topic_distribution_attribute <- table(vis_att_df$bbox_name, vis_att_df$level2_names)
+
+# Convert the table to a dataframe
+topic_df_att <- as.data.frame(topic_distribution_attribute)
+
+# Rename the columns for better visualization
+colnames(topic_df_att) <- c("Lung Area", "Topic", "Count")
+
+# Calculate proportions by attribute category
+topic_df_att <- topic_df_att %>%
+  group_by(Topic) %>%
+  mutate(Proportion = Count / sum(Count))
+
+# Plot the distribution using ggplot2
+p2 <- ggplot(topic_df_att, aes(x = reorder(`Lung Area`, 
+                                           Proportion), y = Proportion, fill = Topic)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Proportional Distribution of Topics in Lung Area", x = "Lung Area", y = "Proportion") +
+  facet_grid(~Topic) +
+  theme_classic() +
+  theme(
+    legend.position = "top"
+  ) +
+  coord_flip()
+```
+
+
+
+```{r}
+vis_att_df = df_lung_attr_map3 %>% dplyr::select(bbox_name, level2_names, attribute_category, level1_names, level3_names, disease_category) %>% drop_na()
+
+# Calculate the topic distribution by attribute category
+topic_distribution_attribute <- table(vis_att_df$attribute_category, vis_att_df$level2_names)
+
+# Convert the table to a dataframe
+topic_df_att <- as.data.frame(topic_distribution_attribute)
+
+# Rename the columns for better visualization
+colnames(topic_df_att) <- c("Attribute Category", "Topic", "Count")
+
+# Calculate proportions by attribute category
+topic_df_att <- topic_df_att %>%
+  group_by(Topic) %>%
+  mutate(Proportion = Count / sum(Count))
+
+topic_df_att2 <- topic_df_att %>%
+  group_by('Attribute Category') %>%
+  mutate(Proportion = Count / sum(Count))
+
+# Plot the distribution using ggplot2
+p2 = ggplot(topic_df_att2, aes(x = `Attribute Category`, y = Proportion, fill = Topic)) +
+  geom_bar(stat = "identity", position = "stack") +
+  labs(title = "Proportional Distribution of Topics in Attribute Categories", x = "Attribute Category", y = "Proportion") +
+  facet_grid(~Topic) +
+  theme_minimal() +
+  coord_flip()
+```
+
+```{r}
+ggpubr::ggarrange(p1, p2, labels = c("A", "B"))
+```
