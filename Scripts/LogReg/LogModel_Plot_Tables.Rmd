@@ -16,6 +16,7 @@ library(lme4)
 library(gtsummary)
 library(ggrepel)
 library(scales)
+library(ggpubr)
 ```
 
 ## Loading Data 
@@ -119,11 +120,13 @@ df_for_model3$disease_category2 = ifelse(df_for_model3$disease_category == "flui
 
 ```{r}
 
-model_data = df_for_model3 %>% dplyr::select(disease_category2, level3_names) %>% drop_na()
+model_data = df_for_model3 %>% dplyr::select(disease_category2, level3_names, gender, age_decile) %>% drop_na()
 
 log_model = glm(disease_category2 ~ level3_names, 
                 data = model_data,
                 family = "binomial")
+
+summary(log_model)
 ```
 
 
@@ -140,8 +143,12 @@ df_logistic = df_logistic %>%
               Coefficient = str_replace_all(Coefficient, "level3_names", "")
             )
 
+
 levels(model_data$level3_names)
 ```
+
+### Fixing dataframe for vis
+#### This is without gender/age controls
 
 ```{r}
 df_logistic$Group = c(rep("Pulmonary & Neurovascular Health", 4), 
@@ -195,84 +202,7 @@ df_logistic2$Coefficient2 = factor(df_logistic2$Coefficient, levels = rev(c(
                                                       
 ```
 
-
 ### Visualization 1
-#### With count on each topic
-
-```{r}
-
-colnames(name3_count) <- c("Coefficient", "Level2", "Count")
-
-df_logistic3 = left_join(df_logistic2, name3_count, by = "Coefficient")
-  
-p_no_gend_count = ggplot(df_logistic3, 
-                         aes(x = Estimate, 
-                             y = Coefficient2, 
-                             xmin = Estimate - 1.96*`Std. Error`, 
-                             xmax = Estimate + 1.96*`Std. Error`, 
-                             color = model_name)) +
-                          geom_point(size = 2, 
-                                     shape = 23, 
-                                     position = position_dodge(width=0)) +
-                          geom_errorbarh(height = 0.2, 
-                                         position=position_dodge(width=0)) +
-                          scale_color_manual(values = c("#D55E00")) + 
-                          geom_vline(xintercept = 1) +
-                          labs(
-                               x = "Odds Ratios",
-                               y = "",
-                               color = "Model") +
-                          theme_minimal() +
-                          theme(strip.text = element_text(size = 10, 
-                                                          face = "bold", 
-                                                          margin = margin(b = 10)),
-                                legend.title = element_blank(),
-                                axis.title = element_text(size = 9),
-                                axis.text = element_text(size = 9),
-                                axis.title.y = element_text(margin = margin(r = 0)),
-                                legend.position = "none",
-                                trip.text.y.left = element_blank(),
-                                panel.spacing = unit(3, "lines"),
-                                panel.spacing.y = unit(0.3, "cm"),
-                                plot.margin = unit(c(1, 0.2, 1 , 0.5), 'lines'),
-                                strip.background = element_rect(fill = "white", color = "black", size = 0.5)) +
-                          facet_grid(Group ~ ., scales = "free", space = "free", switch = "y") +
-                          scale_x_continuous(expand = c(0,0)) 
-
-p_no_gend_count2 <- p_no_gend_count +
-                      geom_text(aes(x = -Inf, y = Inf, label = Group, fontface = "bold"),
-                                size = 3, color = "black",
-                                hjust = 1,
-                                vjust = 0.2,
-                                show.legend = FALSE) +
-                      geom_segment(data = df_logistic3 %>% filter(Group == "Neurological Symptoms"), 
-                                   aes(x = 0.9, xend = 0.1, y = -0.1, yend = -0.1), 
-                                   arrow = arrow(length = unit(0.2, "cm")), 
-                                   linetype = "solid",
-                                   color = "black") +
-                      geom_segment(data = df_logistic3 %>% filter(Group == "Neurological Symptoms"),
-                                   aes(x = 1.1, xend = 3.9, y = -0.1, yend = -0.1), 
-                                   arrow = arrow(length = unit(0.2, "cm")), 
-                                   linetype = "solid",
-                                   color = "black") +
-                      geom_text(data = df_logistic3 %>% filter(Group == "Neurological Symptoms"),
-                                aes(x = 0.5, y = -0.9, label = "FO / HF"),
-                                color = "black",
-                                size = 3,
-                                vjust = 0) +
-                      geom_text(data = df_logistic3 %>% filter(Group == "Neurological Symptoms"),
-                                aes(x = 2.5, y = -0.9, label = "Copd / Emphysema"),
-                                color = "black",
-                                size = 3,
-                                vjust = 0) +
-                      coord_cartesian(clip = "off") +
-                      geom_text(data = df_logistic3,
-                                aes(x = Estimate, y = Coefficient2, label = paste0("n = ", Count)),
-                                color = "black",
-                                size = 3,
-                                hjust = 0.3,
-                                vjust = -1.5)
-```
 
 #### Without count on each topic 
 
@@ -288,54 +218,63 @@ p_no_gend = ggplot(df_logistic2,
                              position=position_dodge(width=0)) +
                   geom_errorbarh(height = 0.2, 
                                  position=position_dodge(width=0)) +
-                  scale_color_manual(values = c("#D55E00")) + 
+                  scale_color_manual(values = c("#808080", "black")) + 
                   geom_vline(xintercept = 1) +
                   labs(
                        x = "Odds Ratios",
                        y = "",
                        color = "Model") +
                   theme_minimal() +
-                  theme(strip.text = element_text(size = 10, 
-                                                  face = "bold", 
-                                                  margin = margin(b = 10)),
+                  theme(
+                        #strip.text = element_text(size = 11, 
+                        #                          face = "bold", 
+                        #                          margin = margin(b = 10)),
                         legend.title = element_blank(),
-                        axis.title = element_text(size = 9),
-                        axis.text = element_text(size = 9),
+                        axis.title = element_text(size = 10),
+                        text = element_text(size = 10),
+
+                        axis.text = element_text(size = 10),
                         axis.title.y = element_text(margin = margin(r = 0)),
                         legend.position = "none",
                         strip.text.y.left = element_blank(),
                         panel.spacing = unit(3, "lines"),
-                        panel.spacing.y = unit(0.3, "cm"),
-                        plot.margin = unit(c(1, 0.2, 1 , 0.5), 'lines'),
+                        panel.spacing.y = unit(0.5, "cm"),
+                        plot.margin = unit(c(1, 0, 0 , 0.5), 'lines'),
                         strip.background = element_rect(fill = "white", color = "black", size = 0.5)) +
                   facet_grid(Group ~ ., scales = "free", space = "free", switch = "y") +
-                  scale_x_continuous(expand = c(0,0)) 
+                  scale_x_continuous(expand = c(0,0),
+                                     breaks = c(0, 2, 4, 6)) 
+
+unique_groups <- distinct(df_logistic2, Group)
+unique_groups$Estimate = 0
+unique_groups$`Std. Error` = 0
 
 p_no_gend2 <- p_no_gend +
-              geom_text(aes(x = -Inf, y = Inf, label = Group, fontface = "bold"),
-                        size = 3, color = "black",
+              geom_text(data = unique_groups, 
+                        aes(x = -Inf, y = Inf, label = unique(Group), fontface = "bold"),
+                        size = 3.5, color = "black",
                         hjust = 1,
                         vjust = 0.2,
                         show.legend = FALSE) +
               geom_segment(data = df_logistic2 %>% filter(Group == "Neurological Symptoms"), 
-                           aes(x = 0.9, xend = 0.1, y = -0.1, yend = -0.1), 
+                           aes(x = 0.9, xend = 0.1, y = -0.5, yend = -0.5), 
                            arrow = arrow(length = unit(0.2, "cm")), 
                            linetype = "solid",
                            color = "black") +
               geom_segment(data = df_logistic2 %>% filter(Group == "Neurological Symptoms"),
-                           aes(x = 1.1, xend = 3.9, y = -0.1, yend = -0.1), 
+                           aes(x = 1.1, xend = 3.9, y = -0.5, yend = -0.5), 
                            arrow = arrow(length = unit(0.2, "cm")), 
                            linetype = "solid",
                            color = "black") +
               geom_text(data = df_logistic2 %>% filter(Group == "Neurological Symptoms"),
-                        aes(x = 0.5, y = -0.9, label = "FO / HF"),
+                        aes(x = 0.5, y = -2, label = "HF"),
                         color = "black",
-                        size = 3,
+                        size = 3.5,
                         vjust = 0) +
               geom_text(data = df_logistic2 %>% filter(Group == "Neurological Symptoms"),
-                        aes(x = 2.5, y = -0.9, label = "Copd / Emphysema"),
+                        aes(x = 2.5, y = -2, label = "COPD"),
                         color = "black",
-                        size = 3,
+                        size = 3.5,
                         vjust = 0) +
               coord_cartesian(clip = "off")
 ```
@@ -345,11 +284,12 @@ p_no_gend2 <- p_no_gend +
 
 ```{r}
 
-model_data_int = df_for_model3 %>% dplyr::select(disease_category2, gender, level3_names) %>% drop_na()
+model_data_int = df_for_model3 %>% dplyr::select(disease_category2, gender, level3_names, age_decile) %>% drop_na()
 
-log_model_int2 = glm(disease_category2 ~ level3_names + level3_names:gender, 
+log_model_int = glm(disease_category2 ~ level3_names+ level3_names:gender, 
                 data = model_data_int,
                 family = "binomial")
+
 ```
 
 ## Logistic regression visualization 2
@@ -357,7 +297,7 @@ log_model_int2 = glm(disease_category2 ~ level3_names + level3_names:gender,
 ### First adding coefficient values to dataframe
 
 ```{r}
-df_logistic_int = as.data.frame(summary(log_model_int2)$coefficients)
+df_logistic_int = as.data.frame(summary(log_model_int)$coefficients)
 
 df_logistic_int$Coefficient <- rownames(df_logistic_int)
 
@@ -375,15 +315,25 @@ df_logistic_int = df_logistic_int %>%
 
 ### Then wrangling this dataframe to fit ggplot input format
 
+#### this is without controls
+
 ```{r}
+                                             
 df_logistic_int = df_logistic_int %>% mutate(Coefficient = ifelse(Coefficient == "(Intercept)", "Pneumonia & Respiratory Symptoms", Coefficient )
                                              )
-df_logistic_int$Group = rep(c(
+df_logistic_int$Group = c(
+                      "Reference",
+                      rep("Pulmonary & Neurovascular Health", 3), 
+                      rep("Respiratory & Cardiovascular Health", 4), 
+                      rep("Catheter & Lead Placement", 3), 
+                      rep("Thoracic Disorders", 4),
+                      rep("Neurological Symptoms", 4),
                       rep("Pulmonary & Neurovascular Health", 4), 
                       rep("Respiratory & Cardiovascular Health", 4), 
                       rep("Catheter & Lead Placement", 3), 
                       rep("Thoracic Disorders", 4),
-                      rep("Neurological Symptoms", 4)), 2)
+                      rep("Neurological Symptoms", 4)
+                      )
 
 df_logistic_int$Estimate = exp(df_logistic_int$Estimate)
 
@@ -392,13 +342,18 @@ df_logistic_int$Estimate = exp(df_logistic_int$Estimate)
 df_logistic_int2 = df_logistic_int
 
 df_logistic_int2$Group <- factor(df_logistic_int2$Group, levels = c(
+                                                            "Reference",
                                                             "Pulmonary & Neurovascular Health",
                                                             "Respiratory & Cardiovascular Health",
                                                             "Catheter & Lead Placement", 
                                                             "Thoracic Disorders",
                                                             "Neurological Symptoms"))
 
-df_logistic_int2$model_name = c(rep("Females", 19), rep("Males", 19))
+df_logistic_int2$model_name = c("Reference", rep("Females", 18), rep("Males", 19))
+
+df_logistic_int2$Estimate = ifelse(df_logistic_int2$model_name == "Reference", 1, df_logistic_int2$Estimate)
+df_logistic_int2$`Std. Error` = ifelse(df_logistic_int2$model_name == "Reference", 0, df_logistic_int2$`Std. Error`)
+
 
 
 df_logistic_int2$Coefficient2 = factor(df_logistic_int2$Coefficient, levels = rev(c(
@@ -440,7 +395,7 @@ p_int_noc = ggplot(df_logistic_int2,
              shape = 23, 
              position=position_dodge(width=0.5)) +
   geom_errorbarh(height = 0.2, position=position_dodge(width=0.5)) +
-  scale_color_manual(values = c("#D55E00", "#264653"),
+  scale_color_manual(values = c("#D55E00", "#264653", "#808080"),
                      limits = c("Females", "Males")) + 
   geom_vline(xintercept = 1) +
   labs(
@@ -451,45 +406,65 @@ p_int_noc = ggplot(df_logistic_int2,
   theme(strip.text = element_text(size = 10, face = "bold", margin = margin(b = 10)),
         legend.title = element_blank(),
         axis.text.y=element_blank(),
-        axis.title = element_text(size = 9),
+        text = element_text(size = 10),
+        axis.title = element_text(size = 10),
         axis.ticks.y=element_blank() ,
         axis.title.y = element_text(margin = margin(r = 0)),
         legend.text = element_text(size = 10)) +
   facet_grid(Group ~ ., scales = "free", space = "free", switch = "y") +
   theme(strip.text.y.left = element_blank(),
         panel.spacing = unit(3, "lines"),
-        panel.spacing.y = unit(0.3, "cm"),
-        legend.position = c(0.85, 0.85),
-        plot.margin = unit(c(1, 0.2, 1 , 0), 'lines'),
-
-        #plot.margin = unit(c(1, 1, 2, 1), "lines"),
+        panel.spacing.y = unit(0.5, "cm"),
+        legend.position = c(0.75, 0.85),
+        plot.margin = unit(c(1, 0, 0 , 0), 'lines'),
         strip.background = element_rect(fill = "white", color = "black", size = 0.5)) +
     scale_x_continuous(expand = c(0,0)) 
 
 p_int_noc2 <- p_int_noc +
               geom_segment(data = df_logistic_int2 %>% filter(Group == "Neurological Symptoms"), 
-                           aes(x = 0.9, xend = -0.5, y = -0.1, yend = -0.1), 
+                           aes(x = 0.9, xend = -0.5, y = -0.5, yend = -0.5), 
                            arrow = arrow(length = unit(0.2, "cm")), 
                            linetype = "solid",
                            color = "black") +
               geom_segment(data = df_logistic_int2 %>% filter(Group == "Neurological Symptoms"),
-                           aes(x = 1.1, xend = 5, y = -0.1, yend = -0.1), 
+                           aes(x = 1.1, xend = 5, y = -0.5, yend = -0.5), 
                            arrow = arrow(length = unit(0.2, "cm")), 
                            linetype = "solid",
                            color = "black") +
               geom_text(data = df_logistic_int2 %>% filter(Group == "Neurological Symptoms"),
-                        aes(x = 0.5, y = -0.9, label = "FO / HF"),
+                        aes(x = 0.5, y = -2, label = "HF"),
                         color = "black",
-                        size = 3,
+                        size = 3.5,
                         vjust = 0) +
               geom_text(data = df_logistic_int2 %>% filter(Group == "Neurological Symptoms"),
-                        aes(x = 2.5, y = -0.9, label = "Copd / Emphysema"),
+                        aes(x = 2.5, y = -2, label = "COPD"),
                         color = "black",
-                        size = 3,
+                        size = 3.5,
                         vjust = 0) +
               coord_cartesian(clip = "off")
 ```
+
+
 ### Saving visualization
+
+```{r}
+# Calculate the maximum number of grids
+n_grids <- max(length(unique(df_logistic2$Group)), length(unique(df_logistic_int2$Group)))
+
+# Modify the p_no_gend plot
+p_no_gend2 <- p_no_gend2 + theme(strip.text.x = element_text(hjust = 0.5))
+
+# Modify the p_int_noc plot
+p_int_noc2 <- p_int_noc2 + theme(strip.text.x = element_text(hjust = 0.5),
+                               panel.spacing.y = unit(0.3, "cm") / n_grids)
+
+```
+
+
+```{r}
+ggarrange(p_no_gend2, p_int_noc2, labels = c("A", "B"), ncol = 2, widths = c(1.7, 1))
+ggsave("logistic_plot_together.eps", width = 2165, height = 1500, units = "px", dpi = 300)
+```
 
 ```{r}
 library(ggpubr)
@@ -500,6 +475,7 @@ ggarrange(p_no_gend2, p_int_noc2, labels = c("A", "B"), ncol = 2)
 
 dev.off()
 ```
+
 ## Making logistic model tables
 
 ### First we need to make two new logistic regressions where we chagne the names of the predictors
@@ -507,37 +483,45 @@ dev.off()
 ```{r}
 model_data2 = model_data %>% rename("Topic" = "level3_names")
 
-model_data_int2 = model_data_int %>% rename("Topic" = "level3_names",
-                                    "Gender" = "gender")
+model_data_int2 = model_data %>% rename("Topic" = "level3_names",
+                                    "Gender" = "gender",
+                                    "Age Decile" = "age_decile")
 
-log_model_int3 = glm(disease_category2 ~ Topic + Topic:Gender, 
+log_model = glm(disease_category2 ~ Gender + `Age Decile` + Topic, 
                 data = model_data_int2,
                 family = "binomial")
 
-log_model2 = glm(disease_category2 ~ Topic, 
-                data = model_data2,
+log_model_int3 = glm(disease_category2 ~ Gender + `Age Decile` + Topic*Gender, 
+                data = model_data_int2,
                 family = "binomial")
 ```
 
 ### Then we can construct the tables with AIC and Deviance values
 
 ```{r}
-tbl1 = log_model2 %>% 
+library(gtsummary)
+tbl1 = log_model %>% 
   tbl_regression(exponentiate = T) %>% 
   add_glance_table(include = c(AIC, deviance)) %>% 
   modify_header(label = "**Variable**", p.value = "**p**")
 
-tbl2 = log_model_int3 %>% 
+tbl2 = log_model_int %>% 
   tbl_regression(exponentiate = T) %>% 
   add_glance_table(include = c(AIC, deviance)) %>% 
   modify_header(label = "**Variable**", p.value = "**p**")
 
 table = 
   tbl_merge(list(tbl1, tbl2),
-            tab_spanner = c("**Model Simple**", "**Model Gender**")) %>% 
+            tab_spanner = c("**Model Controls**", "**Model Gender Interaction**")) %>% 
   modify_table_body(~.x %>% arrange(row_type == "glance_statistic"))
   
 ```
 
+### Saving table 
 
-
+```{r}
+library(webshot2)
+table %>% as_gt() %>% 
+  gt::gtsave(filename = "table.png",
+             path = "../CXR_Dataset")
+```
