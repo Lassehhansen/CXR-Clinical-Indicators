@@ -25,7 +25,7 @@ The organization of the project is as follows:
     │       └── scattertext.ipynb           <- A Python notebook containing scattertext visualization code
     │       └── SHAPvalues.ipynb            <- A Python notebook containing SHAP Value visualization code
     ├── TopicModel   
-    │       └── TopicModel.ipynb            <- Python Notebook for making Topic Model
+    │       └── TopicModel.ipynb            <- Python Notebook for replicating BERTopic Topic Model
     ├── LogReg                              
     │       └── LogModel_Plot_Tables.Rmd    <- R Markdown for making Logistic Regression (visualizations / tables included)
     ├── Preprocessing         
