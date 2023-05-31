@@ -1,5 +1,16 @@
 # CXR-Clinical-Indicators
 
+This repository contains code used to uncover distinct clinical indicators pertaining to Chronic Obstructive Pulmonary Disease (COPD) and heart failure (HF) by means of text mining of patients' medical histories and their correlation with radiological observations in chest x-ray examinations.
+
+The code provided in this repository is designed to be used in conjunction with the ImaGenome dataset, which requires a CITI Certificate to access. If you have obtained the necessary certificate, you can run the code by following these steps:
+
+- Download the scene_graph data from the following location: [https://physionet.org/content/chest-imagenome/1.0.0/#files](https://physionet.org/content/chest-imagenome/1.0.0/#files).
+- Place the downloaded scene_graph data in the appropriate directory within your project.
+- Make sure you have the required dependencies and libraries installed as specified in the code.
+- Adjust any necessary configuration settings or paths within the code to match your setup.
+
+Please note that without the CITI Certificate and access to the ImaGenome dataset, the code provided in this repository cannot be executed.
+
 ## Project Organization
 The organization of the project is as follows:
 
